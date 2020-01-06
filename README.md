@@ -122,7 +122,6 @@ Some files stored in the log directory are:
 
 ## License
 
-Copyright 2018, University of Massachusetts Amherst
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
