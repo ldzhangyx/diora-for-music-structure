@@ -9,6 +9,9 @@ import uuid
 import torch
 import torch.nn as nn
 
+import sys
+sys.path.append("/gpfsnyu/home/yz6492/diora-for-music-structure/pytorch/")
+
 from diora.data.dataset import ConsolidateDatasets, ReconstructDataset, make_batch_iterator
 
 from diora.utils.path import package_path
@@ -74,6 +77,7 @@ def run_train(options, train_iterator, trainer, validation_iterator):
                 count += 1
 
         for batch_idx, batch_map in myiterator():
+            sys.stdout.flush()
             if options.finetune and step >= options.finetune_after:
                 trainer.freeze_diora()
 
@@ -172,7 +176,7 @@ def argument_parser():
     parser.add_argument('--world_size', default=None, type=int)
 
     # Pytorch
-    parser.add_argument('--cuda', action='store_true')
+    parser.add_argument('--cuda', action='store_true', default = True)
     parser.add_argument('--multigpu', action='store_true')
     parser.add_argument("--local_rank", default=None, type=int) # for distributed-data-parallel
 
@@ -184,7 +188,7 @@ def argument_parser():
     parser.add_argument('--save_latest', default=1000, type=int)
     parser.add_argument('--save_distinct', default=50000, type=int)
     parser.add_argument('--save_after', default=1000, type=int)
-    parser.add_argument('--save_init', action='store_true')
+    parser.add_argument('--save_init', action='store_true', default = True)
 
     # Loading.
     parser.add_argument('--load_model_path', default=None, type=str)
@@ -210,7 +214,7 @@ def argument_parser():
 
     # Data (preprocessing).
     parser.add_argument('--uppercase', action='store_true')
-    parser.add_argument('--train_filter_length', default=100, type=int, description = 'max length limit for data') # maxlen?
+    parser.add_argument('--train_filter_length', default=100, type=int, help = 'max length limit for data') # maxlen?
     parser.add_argument('--validation_filter_length', default=0, type=int)
 
     # Model.
