@@ -1,19 +1,22 @@
-## DIORA
+## DIORA for music structure extraction
 
-This is the official repo for our NAACL 2019 paper Unsupervised Latent Tree Induction with Deep Inside-Outside Recursive Autoencoders (DIORA), which presents a fully-unsupervised method for discovering syntax. If you use this code for research, please cite our paper as follows:
+This program is based on the DIORA program, which is published on NAACL 2019.
 
-```
-@inproceedings{drozdov2019diora,
-  title={Unsupervised Latent Tree Induction with Deep Inside-Outside Recursive Autoencoders},
-  author={Drozdov, Andrew and Verga, Pat and Yadav, Mohit and Iyyer, Mohit and McCallum, Andrew},
-  booktitle={North American Association for Computational Linguistics},
-  year={2019},
-}
-```
+Features:
 
-The paper is available on arXiv: https://arxiv.org/abs/1904.02142
+- Change word embeddings to symbolic music representations
+- Provide Nottingham dataset inferface
+- Tree structure visualizasion module (ongoing)
+- MIDI/numpy transfer toolkit (ongoing)
 
-For questions/concerns/bugs please contact adrozdov at cs.umass.edu.
+Extra resources:
+
+- Comparsion with ON-LSTM model (ongoing)
+- Demos for music structure transfer (ongoing)
+
+License:
+
+We follow the Apache Agreement license of the origin program. All code changes are indicated in the commit history.
 
 ## Quick Start
 
@@ -45,19 +48,14 @@ export PYTHONPATH=$(pwd):$PYTHONPATH
 python ...  # (Training/Parsing)
 ```
 
-### Pre-trained Model
-
-Our best performing model (based on unlabeled binary constituency parsing for WSJ) is available for download.
-
-http://diora-naacl-2019.s3.amazonaws.com/diora-checkpoints.zip
-
 ### Data
 
-To reproduce experiments from our NAACL submission, concatenate the data from [SNLI](https://nlp.stanford.edu/projects/snli/) and [MultiNLI](https://www.nyu.edu/projects/bowman/multinli/).
+We do not directly provide Nottingham dataset in numpy format. 
 
-```
-cat ~/data/snli_1.0/snli_1.0_train.jsonl ~/data/multinli_1.0/multinli_1.0_train.jsonl > ~/data/allnli.jsonl
-```
+You can visit this website and transfer MIDI file to numpy format use our toolkit.
+
+https://github.com/jukedeck/nottingham-dataset
+
 
 ### Training
 
@@ -66,36 +64,11 @@ A simple setting to get started:
 ```
 python diora/scripts/train.py \
     --batch_size 10 \
-    --data_type nli \
-    --emb w2v \
-    --embeddings_path ~/data/glove/glove.840B.300d.txt \
     --hidden_dim 50 \
     --log_every_batch 100 \
     --save_after 1000 \
     --train_filter_length 20 \
-    --train_path ~/data/snli_1.0/snli_1.0_train.jsonl \
     --cuda
-```
-
-To reproduce the TreeLSTM experiments from our NAACL submission:
-
-```
-python -m torch.distributed.launch --nproc_per_node=4 diora/scripts/train.py \
-    --arch treelstm \
-    --batch_size 128 \
-    --data_type nli \
-    --elmo_cache_dir ~/data/elmo \
-    --emb elmo \
-    --hidden_dim 400 \
-    --k_neg 100 \
-    --log_every_batch 100 \
-    --lr 2e-3 \
-    --normalize unit \
-    --reconstruct_mode margin \
-    --save_after 1000 \
-    --train_filter_length 20 \
-    --train_path ~/data/allnli.jsonl \
-    --cuda --multigpu
 ```
 
 ### Parsing
@@ -112,97 +85,6 @@ python diora/scripts/parse.py \
     --validation_filter_length 10
 ```
 
-## Multi-GPU Training
-
-Using `DistributedDataParallel`:
-
-```
-export CUDA_VISIBLE_DEVICES=0,1
-export NGPUS=2
-python -m torch.distributed.launch --nproc_per_node=$NGPUS diora/scripts/train.py \
-    --cuda \
-    --multigpu \
-    ... # other args
-```
-
-## Useful Command Line Arguments
-
-*Data*
-
-`--data_type` Specifies the format of the data. Choices = `nli`, `txt`, `txt_id`, `synthetic`. Can specify different types for trainining and validation using `--train_data_type` and `--validation_data_type`. The `synthetic` type does not require any input file.
-
-For examples of the expected format, please refer to the following files:
-
-- `nli` The standard JSONL format used by SNLI and MultiNLI. Although examples are sentence pairs, the model only uses one sentence at a time.
-- `txt` A single space-delimited sentence per line.
-- `txt_id` Same as `txt` except the first token is an example id.
-
-`--train_path` and `validation_path` Specifies the path to the input data for training and validation.
-
-`--train_filter_length` Only examples less than this value will used for training. To consider all examples, set this to 0. Similarly, can use `--validation_filter_length` for validation.
-
-`--batch_size` Specifies the batch size. The batch size specifically for validation can be set using `--validation_batch_size`, otherwise it will default to `--batch_size`.
-
-`--embeddings_path` The path to GloVe-style word embeddings.
-
-`--emb` Set to `w2v` for GloVe, `elmo` for ELMo, and `both` for a concatenation of the two.
-
-`--elmo_options_path` and `--elmo_weights_path` The paths to the options and weights for ELMo.
-
-*Optimization and Model Configuration*
-
-`--lr` The learning rate.
-
-`--hidden_dim` The dimension associated with the TreeLSTM.
-
-`--margin` The margin value used in the objective for reconstruction.
-
-`--k_neg` The number of negative examples to sample.
-
-`--freq_dist_power` The negative examples are chosen according to their frequency within the training corpus. Lower values of `--freq_dist_power` make this distribution more peaked.
-
-`--normalize` When set to `unit`, the values of each cell will have their norm set to 1. Choices = `none`, `unit`.
-
-`--reconstruct_mode` Specifies how to reconstruct the correct word. Choices = `margin`.
-
-*Logging*
-
-`--load_model_path` For evaluation, parsing, and fine-tuning you can use this parameter to specify a previous checkpoint to initialize your model.
-
-`--experiment_path` Specifies a directory where log files and checkpoints will be saved.
-
-`--log_every_batch` Every N gradient updates a summary will be printed to the log.
-
-`--save_latest` Every N gradient updates, a checkpoint will be saved called `model_periodic.pt`.
-
-`--save_distinct` Every N gradient updates, a checkpoint will be saved called `model.step_${N}.pt`.
-
-`--save_after` Checkpoints will only be saved after N gradient updates have been applied.
-
-`--save_init` Save the initialization of the model.
-
-*CUDA*
-
-`--cuda` Use the GPU if available.
-
-`--multigpu` Use multiple GPUs if available.
-
-*Other*
-
-`--seed` Set the random seed.
-
-## Faster ELMo Usage
-
-If you specify the `elmo_cache_dir`, then the context-insensitive ELMo vectors will be cached, making it much faster to load these vectors after the initial usage. They must be cached once per dataset (a dataset is identified as a hash of its vocabulary).
-
-Example Usage:
-
-```
-python diora/scripts/train.py \
-    --emb elmo \
-    --elmo_cache_dir ~/data/elmo \
-    ... # other args
-```
 
 ## Easy Argument Assignment
 
@@ -240,7 +122,6 @@ Some files stored in the log directory are:
 
 ## License
 
-Copyright 2018, University of Massachusetts Amherst
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

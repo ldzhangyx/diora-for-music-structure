@@ -19,7 +19,7 @@ from diora.utils.checkpoint import save_experiment
 from diora.net.experiment_logger import ExperimentLogger
 
 
-data_types_choices = ('nli', 'conll_jsonl', 'txt', 'txt_id', 'synthetic')
+data_types_choices = ('nli', 'conll_jsonl', 'txt', 'txt_id', 'synthetic', 'npy')
 
 
 def count_params(net):
@@ -108,7 +108,7 @@ def run_train(options, train_iterator, trainer, validation_iterator):
             sys.exit()
 
 
-def get_train_dataset(options):
+def get_dataset(options):
     return ReconstructDataset().initialize(options, text_path=options.train_path,
         embeddings_path=options.embeddings_path, filter_length=options.train_filter_length,
         data_type=options.train_data_type)
@@ -119,13 +119,6 @@ def get_train_iterator(options, dataset):
             include_partial=False, filter_length=options.train_filter_length,
             batch_size=options.batch_size, length_to_size=options.length_to_size)
 
-
-def get_validation_dataset(options):
-    return ReconstructDataset().initialize(options, text_path=options.validation_path,
-            embeddings_path=options.embeddings_path, filter_length=options.validation_filter_length,
-            data_type=options.validation_data_type)
-
-
 def get_validation_iterator(options, dataset):
     return make_batch_iterator(options, dataset, shuffle=False,
             include_partial=True, filter_length=options.validation_filter_length,
@@ -133,11 +126,7 @@ def get_validation_iterator(options, dataset):
 
 
 def get_train_and_validation(options):
-    train_dataset = get_train_dataset(options)
-    validation_dataset = get_validation_dataset(options)
-
-    # Modifies datasets. Unifying word mappings, embeddings, etc.
-    ConsolidateDatasets([train_dataset, validation_dataset]).run()
+    train_dataset, validation_dataset = get_dataset(options)
 
     return train_dataset, validation_dataset
 
@@ -190,7 +179,7 @@ def argument_parser():
     # Logging.
     parser.add_argument('--default_experiment_directory', default=os.path.join(package_path(), 'log'), type=str)
     parser.add_argument('--experiment_name', default=None, type=str)
-    parser.add_argument('--experiment_path', default=None, type=str)
+    parser.add_argument('--experiment_path', default='/gpfsnyu/scratch/yz6492/diora/model/', type=str)
     parser.add_argument('--log_every_batch', default=10, type=int)
     parser.add_argument('--save_latest', default=1000, type=int)
     parser.add_argument('--save_distinct', default=50000, type=int)
@@ -201,12 +190,13 @@ def argument_parser():
     parser.add_argument('--load_model_path', default=None, type=str)
 
     # Data.
-    parser.add_argument('--data_type', default='nli', choices=data_types_choices)
+    parser.add_argument('--data_type', default='npy', choices=data_types_choices)
     parser.add_argument('--train_data_type', default=None, choices=data_types_choices)
     parser.add_argument('--validation_data_type', default=None, choices=data_types_choices)
-    parser.add_argument('--train_path', default=os.path.expanduser('~/data/snli_1.0/snli_1.0_train.jsonl'), type=str)
-    parser.add_argument('--validation_path', default=os.path.expanduser('~/data/snli_1.0/snli_1.0_dev.jsonl'), type=str)
-    parser.add_argument('--embeddings_path', default=os.path.expanduser('~/data/glove/glove.6B.300d.txt'), type=str)
+    parser.add_argument('--train_path', default=os.path.expanduser("/gpfsnyu/scratch/yz6492/ec2vae/data/data.npy"), type=str)
+    parser.add_argument('--validation_path', default=os.path.expanduser("/gpfsnyu/scratch/yz6492/ec2vae/data/data.npy"), type=str)
+    parser.add_argument('--embeddings_path', default=os.path.expanduser("/gpfsnyu/scratch/yz6492/diora/data/glove.6B.300d.txt"), type=str)
+    parser.add_argument('--sequence_length', default=64, type=int)
 
     # Data (synthetic).
     parser.add_argument('--synthetic-nexamples', default=1000, type=int)
@@ -220,7 +210,7 @@ def argument_parser():
 
     # Data (preprocessing).
     parser.add_argument('--uppercase', action='store_true')
-    parser.add_argument('--train_filter_length', default=50, type=int)
+    parser.add_argument('--train_filter_length', default=100, type=int, description = 'max length limit for data') # maxlen?
     parser.add_argument('--validation_filter_length', default=0, type=int)
 
     # Model.
@@ -250,7 +240,7 @@ def argument_parser():
                              '(identified by a hash of the vocabulary).')
 
     # Training.
-    parser.add_argument('--batch_size', default=10, type=int)
+    parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--length_to_size', default=None, type=str,
                         help='Easily specify a mapping of length to batch_size.' + \
                              'For instance, 10:32,20:16 means that all batches' + \
@@ -260,7 +250,7 @@ def argument_parser():
     parser.add_argument('--train_dataset_size', default=None, type=int)
     parser.add_argument('--validation_dataset_size', default=None, type=int)
     parser.add_argument('--validation_batch_size', default=None, type=int)
-    parser.add_argument('--max_epoch', default=5, type=int)
+    parser.add_argument('--max_epoch', default=100, type=int)
     parser.add_argument('--max_step', default=None, type=int)
     parser.add_argument('--finetune', action='store_true')
     parser.add_argument('--finetune_after', default=0, type=int)

@@ -109,25 +109,46 @@ class ReaderManager(object):
 class ReconstructDataset(object):
 
     def initialize(self, options, text_path=None, embeddings_path=None, filter_length=0, data_type=None):
-        if data_type == 'nli':
-            reader = NLIReader.build(lowercase=options.lowercase, filter_length=filter_length)
-        elif data_type == 'conll_jsonl':
-            reader = ConllReader(lowercase=options.lowercase, filter_length=filter_length)
-        elif data_type == 'txt':
-            reader = PlainTextReader(lowercase=options.lowercase, filter_length=filter_length, include_id=False)
-        elif data_type == 'txt_id':
-            reader = PlainTextReader(lowercase=options.lowercase, filter_length=filter_length, include_id=True)
-        elif data_type == 'synthetic':
-            reader = SyntheticReader(nexamples=options.synthetic_nexamples,
-                embedding_size=options.synthetic_embeddingsize,
-                vocab_size=options.synthetic_vocabsize, seed=options.synthetic_seed,
-                minlen=options.synthetic_minlen, maxlen=options.synthetic_maxlen,
-                length=options.synthetic_length)
 
-        manager = ReaderManager(reader)
-        result = manager.run(options, text_path, embeddings_path)
+        dataset = np.load('/gpfsnyu/scratch/yz6492/ec2vae/data/data.npy', allow_pickle=True)
+        melody, chord = dataset[0], dataset[1]
 
-        return result
+        melody_list = list()
+        chord_list = list()
+        for i, j in zip(melody, chord):
+            melody_list.append(i[:min(i.shape[0], j.shape[0])])
+            chord_list.append(j[:min(i.shape[0], j.shape[0])])
+
+        length = np.concatenate(melody_list).shape[0]// (options.sequence_length * options.batch_size) * (options.sequence_length * options.batch_size)
+        melody = np.concatenate(melody_list)[:length].reshape(-1, options.sequence_length, 130)
+        chord = np.concatenate(chord_list)[:length].reshape(-1, options.sequence_length, 12)
+        data = np.concatenate([melody, chord], axis = -1)
+        np.random.shuffle(data)
+        length = data.shape[0]
+
+        # for adjusting NLP samples, word==embeddings, word2id, id2embeddings
+        embeddings = list()
+        word2idx = dict()
+        counter = 0
+        for line in data:
+            for element in line:
+                if tuple(element) not in word2idx:
+                    word2idx[tuple(element)] = counter
+                    embeddings.append(element)
+                    counter += 1
+        embeddings = np.array(embeddings)
+
+        # now data should be a list
+        data_list = list()
+        for line in data:
+            data_line = [word2idx[tuple(i)] for i in line]
+            data_list.append(data_line)
+
+        train_result = {'sentences': data_list[:int(0.9*length)], 'embeddings': embeddings, 'word2idx': word2idx, 'extra': None}
+        valid_result = {'sentences': data_list[int(0.9*length):], 'embeddings': embeddings, 'word2idx': word2idx, 'extra': None}
+
+        # result是一个dict，元素包含{sentences, embeddings, word2idx, extra}， 其中sentences是idx list的list
+        return train_result, valid_result
 
 
 def make_batch_iterator(options, dset, shuffle=True, include_partial=False, filter_length=0,
@@ -135,7 +156,7 @@ def make_batch_iterator(options, dset, shuffle=True, include_partial=False, filt
     sentences = dset['sentences']
     word2idx = dset['word2idx']
     extra = dset['extra']
-    metadata = dset['metadata']
+    # metadata = dset['metadata']
 
     cuda = options.cuda
     multigpu = options.multigpu

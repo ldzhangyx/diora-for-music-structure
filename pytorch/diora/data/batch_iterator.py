@@ -105,8 +105,8 @@ class BatchIterator(object):
             batch_map['index'] = index
             batch_map['sents'] = sents
 
-            for k, v in self.extra.items():
-                batch_map[k] = [v[idx] for idx in index]
+            # for k, v in self.extra.items():
+            #     batch_map[k] = [v[idx] for idx in index]
 
             if ngpus > 1:
                 for k in batch_map.keys():
@@ -145,8 +145,8 @@ class BatchIterator(object):
                 batch_map['batch_size'] = batch_size
                 batch_map['length'] = length
 
-                for k, v in self.extra.items():
-                    batch_map[k] = batch[k]
+                # for k, v in self.extra.items():
+                #     batch_map[k] = batch[k]
 
                 yield batch_map
 

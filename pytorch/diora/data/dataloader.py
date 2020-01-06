@@ -73,7 +73,7 @@ class FixedLengthBatchSampler(Sampler):
             state[length] = dict(nbatches=nbatches, surplus=surplus, position=-1)
 
         # Batch order, in terms of length.
-        order = []
+        order = list()
         for length, v in state.items():
             order += [length] * v['nbatches']
 
