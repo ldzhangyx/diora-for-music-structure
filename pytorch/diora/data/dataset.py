@@ -122,7 +122,7 @@ class ReconstructDataset(object):
         length = np.concatenate(melody_list).shape[0]// (options.sequence_length * options.batch_size) * (options.sequence_length * options.batch_size)
         melody = np.concatenate(melody_list)[:length].reshape(-1, options.sequence_length, 130)
         chord = np.concatenate(chord_list)[:length].reshape(-1, options.sequence_length, 12)
-        data = np.concatenate([melody, chord], axis = -1)
+        data = np.concatenate([melody, chord], axis = -1).astype(np.float32)
         np.random.shuffle(data)
         length = data.shape[0]
 
